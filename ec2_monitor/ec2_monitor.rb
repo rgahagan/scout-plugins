@@ -4,7 +4,7 @@ class Ec2Monitor < Scout::Plugin
     ping_destination:
       notes: "ping internal IP of server you're dependant on.  blank skips the test"
     ebs_device:
-      note: eg. 'sdi'.  await - The average time (in milliseconds) for I/O requests issued to the device to be served. This includes the time spent by the requests in queue and the time spent servicing them.  svctime - The average service time (in milliseconds) for I/O requests that were issued to the device. avgqu-sz - The average queue length of the requests that were issued to the device
+      notes: eg. 'sdi' or 'sdi,sdj,sdk' if striped.  await - The average time (in milliseconds) for I/O requests issued to the device to be served. This includes the time spent by the requests in queue and the time spent servicing them.  svctime - The average service time (in milliseconds) for I/O requests that were issued to the device. avgqu-sz - The average queue length of the requests that were issued to the device
       default: sdi
   EOS
 
@@ -45,9 +45,9 @@ class Ec2Monitor < Scout::Plugin
   #  svctime - The average service time (in milliseconds) for I/O requests that were issued to the device.
   #  avgqu-sz - The average queue length of the requests that were issued to the device
   def ebs_timing
-    avgqu_sz = `iostat -x | grep #{ebs_device} | awk '{print $9}'`
-    await = `iostat -x | grep #{ebs_device} | awk '{print $10}'`
-    svctm = `iostat -x | grep #{ebs_device} | awk '{print $11}'`
+    avgqu_sz = `iostat -x | grep -E '#{ebs_device}' | awk '{sum+=$9} END {print sum/NR}'`
+    await = `iostat -x | grep -E '#{ebs_device}' | awk '{sum+=$10} END {print sum/NR}'`
+    svctm = `iostat -x | grep -E '#{ebs_device}' | awk '{sum+=$11} END {print sum/NR}'`
     return avgqu_sz.chomp, await.chomp, svctm.chomp
   end
 
@@ -57,7 +57,7 @@ class Ec2Monitor < Scout::Plugin
   end
 
   def ebs_device
-      option(:ebs_device) || 'sdi'
+      (option(:ebs_device) || 'sdi').gsub(/,/, '|')
   end
 
 end
